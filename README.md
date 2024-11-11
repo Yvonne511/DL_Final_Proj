@@ -4,62 +4,59 @@
 
 In this project, you will train a JEPA world model on a set of pre-collected trajectories from a toy environment involving an agent in two rooms.
 
+
 ### JEPA
+
 Joint embedding prediction architecture (JEPA) is an energy based architecture for self supervised learning first proposed by [LeCun (2022)](https://openreview.net/pdf?id=BZ5a1r-kVsf). Essentially, it works by asking the model to predict its own representations of future observations.
 
-More formally, in the context of this problem, given agent trajectory $(obs_0, action_0, obs_1, action_1, ..., obs_{h-1}, action_{h-1}, obs_h)$, we specify a recurrent JEPA architecture as
+More formally, in the context of this problem, given an *agent trajectory* $\tau$, *i.e.* an observation-action sequence $\tau = (o_0, u_0, o_1, u_1, \ldots, o_{N-1}, u_{N-1}, o_N)$ , we specify a recurrent JEPA architecture as:
 
+$$
+\begin{align}
+\text{Encoder}:   &\tilde{s}\_0 = s\_0 = \text{Enc}\_\theta(o_0) \\
+\text{Predictor}: &\tilde{s}\_n = \text{Pred}\_\phi(\tilde{s}\_{n-1}, u\_{n-1})
+\end{align}
+$$
 
-<div align="center">
-  <img src="assets/eq_one.png" alt="Alt Text" width="650"/>
-</div>
-
-<!-- $$
-\text{Encoder}: \hat{e}_0 = e_0 = \text{Enc}_\theta(obs_0) \\
-\text{Predictor}: \hat{e}_t = \text{Pred}_\phi(\hat{e}_{t-1}, a_{t-1}) \\
-$$ -->
-
-Where $\tilde{e}_t$ is the predicted representation at timestep $t$, and $e_t$ is the encoder output at timestep $t$.
+Where $\tilde{s}_n$ is the predicted state at time index $n$, and $s_n$ is the encoder output at time index $n$.
 
 The architecture may also be teacher-forcing (non-recurrent):
 
+$$
+\begin{align}
+\text{Encoder}:   &s\_n = \text{Enc}\_\theta(o_n) \\
+\text{Predictor}: &\tilde{s}\_n = \text{Pred}\_\phi(s\_{n-1}, u\_{t-1})
+\end{align}
+$$
 
-<div align="center">
-  <img src="assets/eq_two.png" alt="Alt Text" width="650"/>
-</div>
+The JEPA training objective would be to minimize the energy for the observation-action sequence $\tau$, given to us by the sum of the distance between predicted states $\tilde{s}\_n$ and the target states $s'\_n$, where:
 
-<!-- $$
-\text{Encoder}: e_t = \text{Enc}_\theta(obs_t) \\
-\text{Predictor}: \hat{e}_t = \text{Pred}_\phi(e_{t-1}, a_{t-1})
-$$ -->
+$$
+\begin{align}
+\text{Target Encoder}: &s'\_n = \text{Enc}\_{\psi}(o_n) \\
+\text{System energy}:  &F(\tau) = \sum\_{n=1}^{N}D(\tilde{s}\_n, s'\_n)
+\end{align}
+$$
 
-The JEPA training objective would be to minimize the distance between predicted representation $\tilde{e_t}$ and the target representation $\bar{e_t}$, where:
+Where the Target Encoder $\text{Enc}\_\psi$ may be identical to Encoder $\text{Enc}\_\theta$ ([VicReg](https://arxiv.org/pdf/2105.04906), [Barlow Twins](https://arxiv.org/pdf/2103.03230)), or not ([BYOL](https://arxiv.org/pdf/2006.07733))
 
-<div align="center">
-  <img src="assets/eq_three.png" alt="Alt Text" width="650"/>
-</div>
-
-<!-- $$
-\text{Target Encoder}: e'_t = \text{Enc}_{\psi}(obs_t) \\
-\text{min } \sum_{t=1}^{h}D(\hat{e_t}, e'_t)
-$$ -->
-
-
-Where the Target Encoder $\text{Enc}_\psi$ may be identical to Encoder $\text{Enc}_{\theta}$ ([VicReg](https://arxiv.org/pdf/2105.04906), [Barlow Twins](https://arxiv.org/pdf/2103.03230)), or not ([BYOL](https://arxiv.org/pdf/2006.07733))
-
-$D(x, y)$ is some distance function. However, minimizing the above objective naively is problematic because it can lead to representation collapse (why?). There are techniques (such as ones mentioned above) to prevent this collapse by adding additional objectives or specific architectural choices. Feel free to experiment.
+$D(\tilde{s}\_n, s'\_n)$ is some "distance" function. However, minimizing the energy naively is problematic because it can lead to representation collapse (why?). There are techniques (such as ones mentioned above) to prevent this collapse by adding regularisers, contrastive samples, or specific architectural choices. Feel free to experiment.
 
 Here's a diagram illustrating a recurrent JEPA for 4 timesteps:
 
 ![Alt Text](assets/hjepa.png)
 
-### Environment / Dataset
+
+### Environment and data set
+
 The dataset consists of random trajectories collected from a toy environment consisting of an agent (dot) in two rooms separated by a wall. There's a door in a wall.  The agent cannot travel through the border wall or middle wall (except through the door). Different trajectories may have different wall and door positions. Thus your JEPA model needs to be able to perceive and distinguish environment layouts. Two training trajectories with different layouts are depicted below.
 
 <img src="assets/two_rooms.png" alt="Alt Text" width="500"/>
 
+
 ### Task
-Your task is to implement and train a JEPA architecture on a dataset of 2.5M frames of exploratory trajectories (see images above). Then, your model will be evaluated based on how well the predicted representations will capture the true (x, y) coordinate of the agent. 
+
+Your task is to implement and train a JEPA architecture on a dataset of 2.5M frames of exploratory trajectories (see images above). Then, your model will be evaluated based on how well the predicted representations will capture the true $(x, y)$ coordinate of the agent we'll call $(y\_1,y\_2)$. 
 
 Here are the constraints:
 * It has to be a JEPA architecture - namely you have to train it by minimizing the distance between predictions and targets in the *representation space*, while preventing collapse.
@@ -71,10 +68,13 @@ Here are the constraints:
 ### Evaluation
 How do we evaluate the quality of our encoded and predicted representations?
 
-One way to do it is through probing - we can see how well we can extract certain ground truth informations from the learned representations. In this particular setting, we will unroll the JEPA world model recurrently $N$ times into the future, conditioned on initial observation $obs_0$ and action sequence $a_0, a_1, ..., a_{N-1}$ (same process as recurrent JEPA described earlier), generating predicted representations $\tilde{e_1}, \tilde{e_2}, \tilde{e_3}, ..., \tilde{e_N}$. Then, we will train a 2-layer FC to extract the ground truth agent (x,y) coordinates from these predicted representations:
+One way to do it is through probing - we can see how well we can extract certain ground truth informations from the learned representations. In this particular setting, we will unroll the JEPA world model recurrently $N$ times into the future through the same process as recurrent JEPA described earlier, conditioned on initial observation $o_0$ and action sequence $u\_0, u\_1, \ldots, u\_{N-1}$ jointnly called $x$, generating predicted representations $\tilde{s}\_1, \tilde{s}\_2, \tilde{s}\_3, \ldots, \tilde{s}\_N$. Then, we will train a 2-layer FC to extract the ground truth agent $y = (y\_1,y\_2)$ coordinates from these predicted representations:
 
 $$
-\text{min } \sum_{t=1}^{N} \lVert \text{Prober}(\tilde{e}_t) - (x,y)_t \rVert _2^2
+\begin{align}
+F(x,y)          &= \sum_{n=1}^{N} C[y\_n, \text{Prober}(\tilde{s}\_n)]\\
+C(y, \tilde{y}) &= \lVert \tilde{y} - y \rVert _2^2
+\end{align}
 $$
 
 The smaller the MSE loss on the probing validation dataset, the better our learned representations are at capturing the particular information we care about - in this case the agent location. (We can also probe for other things such as wall or door locations, but we only focus on agent location here).
@@ -87,7 +87,7 @@ There are two other validation sets that are not released but will be used to te
 
 
 ### Competition criteria
-Each team will be evaluated on 5 criterias:
+Each team will be evaluated on $N=5$ criterias:
 
 1. MSE error on `probe_normal`. **Weight** 1
 2. MSE error on `probe_wall`. **Weight** 1
@@ -95,12 +95,11 @@ Each team will be evaluated on 5 criterias:
 4. MSE error on out of domain wall probing test. **Weight** 1
 5. Parameter count of your model (less parameters --> more points). **Weight** 0.25
 
-The teams are first ranked according to each criteria independently. A particular team's overall ranking is the weighted sum of the 5 rankings:
+The teams are first scorded according to each criteria $C\_n$ independently. A particular team's overall score $S$ is the weighted sum of the 5 criteria:
 
 $$
-\text{Rank}_{\text{overall}} = \sum_i^5 \text{Rank}^i * \text{weight}^i
+S = \sum\_{n=1}^N w_nC\_n
 $$
-
 
 
 ## Instructions
@@ -111,7 +110,8 @@ $$
 2. Clone repo, `cd` into repo
 3. `pip install -r requirements.txt`
 
-### Dataset
+
+### Data set
 The training data can be found in `/scratch/DL24FA/train/states.npy` and `/scratch/DL24FA/train/actions.npy`. States have shape (num_trajectories, trajectory_length, 2, 64, 64). The observation is a two-channel image. 1st channel representing agent, and 2nd channel representing border and walls.
 Actions have shape (num_trajectories, trajectory_length-1, 2), each action is a (delta x, delta y) vector specifying position shift from previous global position of agent. 
 
@@ -119,13 +119,16 @@ Probing train dataset can be found in `/scratch/DL24FA/probe_normal/train`.
 
 Probing val datasets can be found in `/scratch/DL24FA/probe_normal/val` and `/scratch/DL24FA/probe_wall/val`
 
+
 ### Training
 Please implement your own training script and model architecture as a part of this existing codebase.
+
 
 ### Evaluation
 The probing evaluation is already implemented for you. It's inside `main.py`. You just need to add change some code marked by #TODOs, namely initialize, load your model. You can also change how your model handle forward pass marked by #TODOs inside `evaluator.py`. **DO NOT** change any other parts of `main.py` and `evaluator.py`.
 
 Just run `python main.py` to evaluate your model. 
+
 
 ### Submission
 Create the zipped version of following folder for submission:
