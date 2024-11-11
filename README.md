@@ -73,7 +73,7 @@ One way to do it is through probing - we can see how well we can extract certain
 $$
 \begin{align}
 F(x,y)          &= \sum_{n=1}^{N} C[y\_n, \text{Prober}(\tilde{s}\_n)]\\
-C(y, \tilde{y}) &= \lVert \tilde{y} - y \rVert _2^2
+C(y, \tilde{y}) &= \lVert y - \tilde{y} \rVert _2^2
 \end{align}
 $$
 
