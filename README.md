@@ -25,7 +25,7 @@ The architecture may also be teacher-forcing (non-recurrent):
 $$
 \begin{align}
 \text{Encoder}:   &s\_n = \text{Enc}\_\theta(o_n) \\
-\text{Predictor}: &\tilde{s}\_n = \text{Pred}\_\phi(s\_{n-1}, u\_{t-1})
+\text{Predictor}: &\tilde{s}\_n = \text{Pred}\_\phi(s\_{n-1}, u\_{n-1})
 \end{align}
 $$
 
