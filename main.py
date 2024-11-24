@@ -13,7 +13,7 @@ def get_device():
 
 
 def load_data(device):
-    data_path = "/scratch/DL24FA"
+    data_path = "/vast/yw4142/datasets/DL24FA"
 
     probe_train_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_normal/train",
@@ -82,14 +82,17 @@ def main(cfg):
         project="dl-final ",
         config=OmegaConf.to_container(cfg),
     )
-    # result = cfg.x ** 2 + cfg.y ** 2
-    # wandb.log({"result": result})
-    # print(cfg)
-    # print("Result:", result)
     device = get_device()
     probe_train_ds, probe_val_ds = load_data(device)
-    model = load_model()
-    evaluate_model(device, model, probe_train_ds, probe_val_ds)
+    print(len(probe_train_ds))
+    print(len(probe_val_ds))
+
+    for batch in probe_train_ds:
+        print(batch[0].shape)
+        print(batch[1])
+        break
+    # model = load_model()
+    # evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
     wandb.finish()
 #     return result
