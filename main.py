@@ -71,13 +71,19 @@ def evaluate_model(device, model, probe_train_ds, probe_val_ds):
 #     model = load_model()
 #     evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
+import os
 import hydra
 import wandb
 import submitit_patch
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, open_dict
 
-@hydra.main(config_path=".", config_name="config", version_base=None)
-def main(cfg):
+@hydra.main(config_path=".", config_name="config")
+def main(cfg: OmegaConf):
+
+    with open_dict(cfg):
+        cfg["saved_folder"] = os.getcwd()
+        print(f"Saving everything in: {cfg['saved_folder']}")
+
     wandb.init(
         project="dl-final ",
         config=OmegaConf.to_container(cfg),
@@ -95,7 +101,6 @@ def main(cfg):
     # evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
     wandb.finish()
-#     return result
 
 if __name__ == "__main__":
     main()
