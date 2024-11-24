@@ -11,5 +11,6 @@ dependencies:
     - wandb
     - matplotlib==3.4.2
     - numpy==1.23.5
-    - omegaconf==2.1.2
+    - omegaconf
     - tqdm==4.65.0
+    - torch
