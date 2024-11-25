@@ -64,13 +64,6 @@ def evaluate_model(device, model, probe_train_ds, probe_val_ds):
     for probe_attr, loss in avg_losses.items():
         print(f"{probe_attr} loss: {loss}")
 
-
-# if __name__ == "__main__":
-#     device = get_device()
-#     probe_train_ds, probe_val_ds = load_data(device)
-#     model = load_model()
-#     evaluate_model(device, model, probe_train_ds, probe_val_ds)
-
 import os
 import hydra
 import wandb
@@ -83,11 +76,23 @@ def main(cfg: OmegaConf):
     with open_dict(cfg):
         cfg["saved_folder"] = os.getcwd()
         print(f"Saving everything in: {cfg['saved_folder']}")
-
-    wandb.init(
+    model_name = cfg["saved_folder"].split("outputs/")[-1]
+    # model_name += f"_{self.cfg.env.name}_f{self.cfg.frameskip}_h{self.cfg.num_hist}_p{self.cfg.num_pred}"
+    total_epochs = cfg.training.epochs
+    epoch = 0
+    wandb_run = wandb.init(
         project="dl-final ",
         config=OmegaConf.to_container(cfg),
     )
+
+    with open_dict(cfg):
+        cfg.wandb_run_id = wandb_run.id
+        cfg.wandb_run_name = model_name  # Save the run name for tracking
+        print(f"W&B run ID: {cfg.wandb_run_id}")
+        print(f"W&B run name: {cfg.wandb_run_name}")
+
+    wandb.run.name = model_name
+
     device = get_device()
     probe_train_ds, probe_val_ds = load_data(device)
     print(len(probe_train_ds))
