@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from src.utils.tensors import (
+from utils.tensors import (
     trunc_normal_,
     repeat_interleave_batch
 )
