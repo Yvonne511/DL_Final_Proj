@@ -14,7 +14,6 @@ def get_device():
 
 def load_data(device):
     data_path = "/vast/yw4142/datasets/DL24FA"
-
     probe_train_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_normal/train",
         probing=True,
