@@ -6,8 +6,10 @@
 #
 
 import torch
-import vision_transformer as vit
-from schedulers import (
+import torch.nn as nn
+
+from utils import vision_transformer as vit
+from utils.schedulers import (
     WarmupCosineSchedule,
     CosineWDSchedule)
 
