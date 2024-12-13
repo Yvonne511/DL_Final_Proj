@@ -1,10 +1,3 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-#
-
 import math
 from functools import partial
 import numpy as np
@@ -183,7 +176,8 @@ class PatchEmbed(nn.Module):
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x):
-        B, C, H, W = x.shape
+        B, T, C, H, W = x.shape
+        x = x.view(B * T, C, H, W)
         x = self.proj(x).flatten(2).transpose(1, 2)
         return x
 
@@ -221,7 +215,7 @@ class VisionTransformer(nn.Module):
         self,
         img_size=[224],
         patch_size=16,
-        in_chans=3,
+        in_chans=2,
         embed_dim=768,
         predictor_embed_dim=384,
         depth=12,
@@ -406,14 +400,14 @@ class VisionTransformerPredictor(nn.Module):
 
         return x
 
-def vit_predictor():
+def vit_predictor(embed_dim, num_heads, depth, action_dim=10):
     model = VisionTransformerPredictor(
-            embed_dim=192,
-            depth=12,
-            num_heads=3,
-            action_dim=10,
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            action_dim=action_dim,
             norm_layer=partial(nn.LayerNorm, eps=1e-6)
-        ).to(device)
+        )
     return model 
 
 def vit_tiny(patch_size=16, **kwargs):

@@ -83,7 +83,6 @@ class JEPA_Model(nn.Module):
         num_heads = self.observation_encoder.num_heads
 
         self.predictor = vit.__dict__["vit_predictor"](
-            num_patches=encoder.patch_embed.num_patches,
             embed_dim=embed_dim,
             num_heads=num_heads,
             depth=pred_depth
