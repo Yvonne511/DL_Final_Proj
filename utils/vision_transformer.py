@@ -173,7 +173,7 @@ class Block(nn.Module):
 class PatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
+    def __init__(self, img_size=224, patch_size=16, in_chans=2, embed_dim=768):
         super().__init__()
         num_patches = (img_size // patch_size) * (img_size // patch_size)
         self.img_size = img_size
@@ -193,7 +193,7 @@ class ConvEmbed(nn.Module):
     3x3 Convolution stems for ViT following ViTC models
     """
 
-    def __init__(self, channels, strides, img_size=224, in_chans=3, batch_norm=True):
+    def __init__(self, channels, strides, img_size=224, in_chans=2, batch_norm=True):
         super().__init__()
         # Build the stems
         stem = []
@@ -219,9 +219,9 @@ class VisionTransformer(nn.Module):
     """ Vision Transformer """
     def __init__(
         self,
-        img_size=[224],
-        patch_size=16,
-        in_chans=3,
+        img_size=[65],
+        patch_size=5,
+        in_chans=2,
         embed_dim=768,
         predictor_embed_dim=384,
         depth=12,
@@ -406,14 +406,15 @@ class VisionTransformerPredictor(nn.Module):
 
         return x
 
-def vit_predictor():
+def vit_predictor(embed_dim=192, num_heads=3, depth=3, action_dim=5, **kwargs):
     model = VisionTransformerPredictor(
-            embed_dim=192,
-            depth=12,
-            num_heads=3,
-            action_dim=10,
-            norm_layer=partial(nn.LayerNorm, eps=1e-6)
-        ).to(device)
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads,
+            action_dim=action_dim,
+            norm_layer=partial(nn.LayerNorm, eps=1e-6),
+            **kwargs
+        )
     return model 
 
 def vit_tiny(patch_size=16, **kwargs):

@@ -8,6 +8,8 @@ from utils.model import JEPA_Model, init_opt
 import matplotlib.pyplot as plt
 import os
 
+from tqdm import tqdm
+
 
 def get_device():
     """Check for GPU availability."""
@@ -125,80 +127,75 @@ def main(cfg: OmegaConf):
         cfg["saved_folder"] = os.getcwd()
         print(f"Saving everything in: {cfg['saved_folder']}")
 
-    # wandb.init(
-    #     project="dl-final ",
-    #     config=OmegaConf.to_container(cfg),
-    # )
+    wandb.init(
+        project="dl-final ",
+        config=OmegaConf.to_container(cfg),
+    )
     device = get_device()
     probe_train_ds, probe_val_ds = load_data(device)
-    print(f"Number of training samples: {len(probe_train_ds)}")
-    print(f"Number of validating samples: {len(probe_val_ds)}")
+    print(f"Number of training batches: {len(probe_train_ds)}")
+    print(f"Number of validating batches: {len(probe_val_ds)}")
 
-    for batch in probe_train_ds:
-        print(f"Batch states shape: {batch.states.shape}")  # Expecting [64, 17, 2, 65, 65]
-        print(f"Batch locations shape: {batch.locations.shape}")
-        print(f"Batch actions shape: {batch.actions.shape}")
-        
-        save_continuous_frames_with_metadata(batch)
-        break
-    # action_dim = cfg.get('action_dim', 0)
-    # model = load_model(device, action_dim=action_dim)
-    # optimizer, scaler, scheduler, wd_scheduler = init_opt(
-    #     model.observation_encoder,
-    #     model.predictor,
-    #     iterations_per_epoch=len(probe_train_ds),
-    #     start_lr=cfg.start_lr,
-    #     ref_lr=cfg.ref_lr,
-    #     warmup=cfg.warmup_epochs,
-    #     num_epochs=cfg.num_epochs,
-    #     wd=cfg.weight_decay,
-    #     final_wd=cfg.final_weight_decay,
-    #     final_lr=cfg.final_lr,
-    #     use_bfloat16=cfg.use_bfloat16,
-    #     ipe_scale=cfg.ipe_scale
-    # )
+    model_config = cfg.model
+    action_dim = model_config.action_dim
+    model = load_model(device, action_dim=action_dim)
 
-    # num_epochs = cfg.num_epochs
-    # for epoch in range(num_epochs):
-    #     model.train()
-    #     total_loss = 0.0
-    #     for batch in probe_train_ds:
-    #         current_observation, action, future_observation = batch
-    #         current_observation = current_observation.to(device)
-    #         action = action.to(device)
-    #         future_observation = future_observation.to(device)
+    training_config = cfg.training
+    num_epochs = training_config.epochs
 
-    #         optimizer.zero_grad()
-    #         loss = model(current_observation, future_observation, action=action)
-    #         loss.backward()
-    #         optimizer.step()
+    optimizer, scaler, scheduler, wd_scheduler = init_opt(
+            model.observation_encoder,
+            model.predictor,
+            iterations_per_epoch=len(probe_train_ds),
+            start_lr=training_config.start_lr,
+            ref_lr=training_config.ref_lr,
+            warmup=training_config.warmup_epochs,
+            num_epochs=num_epochs,
+            wd=training_config.weight_decay,
+            final_wd=training_config.final_weight_decay,
+            final_lr=training_config.final_lr,
+            use_bfloat16=training_config.use_bfloat16,
+            ipe_scale=training_config.ipe_scale
+        )
 
-    #         total_loss += loss.item()
+    for epoch in range(num_epochs):
+        model.train()
+        total_loss = 0.0
+        for batch in tqdm(probe_train_ds, desc=f"Training Epoch {epoch+1}", leave=False):
+            # print(f"Batch states shape: {batch.states.shape}")  # [64, 17, 2, 65, 65]
+            # print(f"Batch locations shape: {batch.locations.shape}") # [64, 17, 2]
+            # print(f"Batch actions shape: {batch.actions.shape}") # [64, 16, 2]
+            # save_continuous_frames_with_metadata(batch)
+            obs = batch.states # [64, 17, 2, 65, 65]
+            acts = batch.actions # [64, 17, 2]
+            optimizer.zero_grad()
+            loss = model(obs, acts)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            break
 
-    #     avg_loss = total_loss / len(probe_train_ds)
-    #     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss}")
-    #     wandb.log({"Train Loss": avg_loss, "Epoch": epoch+1})
+        avg_loss = total_loss / len(probe_train_ds)
+        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss}")
+        wandb.log({"Train Loss": avg_loss, "Epoch": epoch+1})
 
-    #     # Evaluation on validation set
-    #     model.eval()
-    #     with torch.no_grad():
-    #         val_loss = 0.0
-    #         for batch in probe_val_ds['normal']:
-    #             current_observation, action, future_observation = batch
-    #             current_observation = current_observation.to(device)
-    #             action = action.to(device)
-    #             future_observation = future_observation.to(device)
+        # Evaluation on validation set
+        # model.eval()
+        # with torch.no_grad():
+        #     val_loss = 0.0
+        #     for batch in probe_val_ds['normal']:
+        #         obs = batch.states
+        #         acts = batch.actions
+        #         loss = model(obs, acts)
+        #         val_loss += loss.item()
 
-    #             loss = model(current_observation, future_observation, action=action)
-    #             val_loss += loss.item()
+        #     avg_val_loss = val_loss / len(probe_val_ds['normal'])
+        #     print(f"Validation Loss: {avg_val_loss}")
+        #     wandb.log({"Validation Loss": avg_val_loss, "Epoch": epoch+1})
 
-    #         avg_val_loss = val_loss / len(probe_val_ds['normal'])
-    #         print(f"Validation Loss: {avg_val_loss}")
-    #         wandb.log({"Validation Loss": avg_val_loss, "Epoch": epoch+1})
+        evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
-    # evaluate_model(device, model, probe_train_ds, probe_val_ds)
-
-    # wandb.finish()
+    wandb.finish()
 
 if __name__ == "__main__":
     main()
