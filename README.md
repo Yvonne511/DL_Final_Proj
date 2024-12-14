@@ -157,6 +157,7 @@ probe_normal val loss: {your loss}
 probe_wall val loss: {your loss}
 probe_wall_other val loss: {your loss}
 probe_expert val loss: {your loss}
+# number of trainable parameters of your model
 # training command to replicate your submitted model
 ```
 
