@@ -101,6 +101,9 @@ def evaluate_model(device, model, probe_train_ds, probe_val_ds):
 if __name__ == "__main__":
     device = get_device()
     model = load_model()
+    
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total Trainable Parameters: {total_params:,}")
 
     probe_train_ds, probe_val_ds = load_data(device)
     evaluate_model(device, model, probe_train_ds, probe_val_ds)
