@@ -68,10 +68,11 @@ class JEPA_Model(nn.Module):
         self,
         device,
         model_name='vit_tiny',
-        patch_size=16,
-        img_size=224,
+        patch_size=5,
+        img_size=65,
         pred_depth=6,
-        pred_emb_dim=384
+        pred_emb_dim=384,
+        action_dim=2
     ):
         super(JEPA_Model, self).__init__()
 
@@ -85,7 +86,8 @@ class JEPA_Model(nn.Module):
         self.predictor = vit.__dict__["vit_predictor"](
             embed_dim=embed_dim,
             num_heads=num_heads,
-            depth=pred_depth
+            depth=pred_depth,
+            action_dim=action_dim
         ).to(device)
 
         self.target_encoder = vit.__dict__[model_name](
@@ -99,13 +101,12 @@ class JEPA_Model(nn.Module):
 
         self.device = device
 
-    def forward(self, current_observation, future_observation):
-        obs_representation = self.observation_encoder(current_observation)  # Shape: [B, N, D]
-        pred_future_representation = self.predictor(obs_representation, action=action)  # Shape: [B, N, D]
-        with torch.no_grad():
-            target_representation = self.target_encoder(future_observation)  # Shape: [B, N, D]
-        if pred_future_representation.shape[1] > target_representation.shape[1]:
-            pred_future_representation = pred_future_representation[:, :-1, :]
-        loss = nn.MSELoss()(pred_future_representation, target_representation)
+        self.loss = nn.MSELoss()
 
-        return loss
+    def forward(self, s_t, o_t1, action):
+        s_t_pred = self.predictor(s_t, action)
+        s_t_target = self.target_encoder(o_t1)
+
+        l = self.loss(s_t_pred, s_t_target)
+        
+        return s_t_pred, l

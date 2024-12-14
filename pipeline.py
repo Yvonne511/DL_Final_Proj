@@ -12,6 +12,7 @@ import hydra
 import wandb
 import submitit_patch
 from omegaconf import OmegaConf, open_dict
+from tqdm import tqdm
 
 def get_device():
     """Check for GPU availability."""
@@ -116,19 +117,21 @@ def train(model, probe_train_ds, optimizer, device):
     total_loss = 0.0
     model.train()
 
-    for batch in probe_train_ds:
+    for batch in tqdm(probe_train_ds):
         obs, location, actions = batch
         obs = obs.to(device)   # shape: (B, T, 2, H, W)
         actions = actions.to(device)  # shape: (B, T-1, 2)
         
         batch_loss = 0.0
+        s_t = model.observation_encoder(obs[:, 0])
+
         for t in range(obs.size(1) - 1):
-            o_t = obs[:, t]
             o_t1 = obs[:, t+1]
             action_t = actions[:, t]
 
-            loss = model(o_t, o_t1, action_t)
+            s_t_pred, loss = model(s_t, o_t1, action_t)
             batch_loss += loss.item()
+            s_t = s_t_pred.detach()
 
         optimizer.zero_grad()
         loss.backward()
@@ -148,13 +151,16 @@ def evaluate(model, probe_val_ds, device):
             actions = actions.to(device)  # shape: (B, T-1, 2)
             
             batch_loss = 0.0
+            s_t = model.observation_encoder(obs[:, 0])
+
             for t in range(obs.size(1) - 1):
-                o_t = obs[:, t]
                 o_t1 = obs[:, t+1]
                 action_t = actions[:, t]
 
-                loss = model(o_t, o_t1, action_t)
+                s_t_pred, loss = model(s_t, o_t1, action_t)
                 batch_loss += loss.item()
+                s_t = s_t_pred.detach()
+
         val_loss += batch_loss
         avg_val_loss = val_loss / len(probe_val_ds['normal'])
     return avg_val_loss
@@ -167,22 +173,15 @@ def main(cfg: OmegaConf):
         cfg["saved_folder"] = os.getcwd()
         print(f"Saving everything in: {cfg['saved_folder']}")
 
-    # wandb.init(
-    #     project="dl-final ",
-    #     config=OmegaConf.to_container(cfg),
-    # )
+    wandb.init(
+        project="dl-final ",
+        config=OmegaConf.to_container(cfg),
+    )
     device = get_device()
     probe_train_ds, probe_val_ds = load_data(device)
     print(f"Number of training samples: {len(probe_train_ds)}")
     print(f"Number of validating samples: {len(probe_val_ds)}")
 
-    # for batch in probe_train_ds:
-    #     print(f"Batch states shape: {batch.states.shape}")  # Expecting [64, 17, 2, 65, 65]
-    #     print(f"Batch locations shape: {batch.locations.shape}")
-    #     print(f"Batch actions shape: {batch.actions.shape}")
-        
-    #     save_continuous_frames_with_metadata(batch)
-    #     break 
     action_dim = cfg.get('action_dim', 0)
     model = load_model(device)
     optimizer, scaler, scheduler, wd_scheduler = init_opt(

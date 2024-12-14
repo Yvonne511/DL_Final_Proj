@@ -176,8 +176,7 @@ class PatchEmbed(nn.Module):
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
 
     def forward(self, x):
-        B, T, C, H, W = x.shape
-        x = x.view(B * T, C, H, W)
+        B, C, H, W = x.shape
         x = self.proj(x).flatten(2).transpose(1, 2)
         return x
 
@@ -396,11 +395,11 @@ class VisionTransformerPredictor(nn.Module):
 
         for blk in self.blocks:
             x = blk(x)
-        x = self.norm(x)  # Shape: [B, N+1, D] or [B, N, D]
+        x = self.norm(x[:, :-1, :])  # Shape: [B, N+1, D] or [B, N, D]
 
         return x
 
-def vit_predictor(embed_dim, num_heads, depth, action_dim=10):
+def vit_predictor(embed_dim, num_heads, depth, action_dim):
     model = VisionTransformerPredictor(
             embed_dim=embed_dim,
             depth=depth,
