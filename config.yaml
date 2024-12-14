@@ -26,3 +26,16 @@ hydra:
 
 training:
   epochs: 100
+  warmup_epochs: 0
+  start_lr: 1e-5                     # Starting learning rate during warmup
+  ref_lr: 1e-3                       # Reference learning rate after warmup
+  final_lr: 1e-6                     # Final learning rate at the end of training
+
+  weight_decay: 1e-4                 # Initial weight decay
+  final_weight_decay: 1e-5           # Final weight decay
+
+  use_bfloat16: true                 # Use bfloat16 for mixed precision training
+  ipe_scale: 1.0                     # Scaling factor for iterations per epoch
+
+model:
+  action_dim: 2

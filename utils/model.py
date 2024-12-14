@@ -68,45 +68,76 @@ class JEPA_Model(nn.Module):
         self,
         device,
         model_name='vit_tiny',
-        patch_size=16,
-        img_size=224,
+        patch_size=5,
+        img_size=65,
         pred_depth=6,
-        pred_emb_dim=384
+        pred_emb_dim=384,
+        action_dim=2,
     ):
         super(JEPA_Model, self).__init__()
 
         self.observation_encoder = vit.__dict__[model_name](
             img_size=[img_size],
-            patch_size=patch_size
+            patch_size=patch_size,
+            in_chans=2
         ).to(device)
+
         embed_dim = self.observation_encoder.embed_dim
         num_heads = self.observation_encoder.num_heads
-
+        
         self.predictor = vit.__dict__["vit_predictor"](
-            num_patches=encoder.patch_embed.num_patches,
             embed_dim=embed_dim,
             num_heads=num_heads,
-            depth=pred_depth
+            depth=pred_depth,
+            action_dim = action_dim
         ).to(device)
 
         self.target_encoder = vit.__dict__[model_name](
             img_size=[img_size],
-            patch_size=patch_size
+            patch_size=patch_size,
+            in_chans=2
         ).to(device)
 
         self.target_encoder.load_state_dict(self.observation_encoder.state_dict())
         for param in self.target_encoder.parameters():
             param.requires_grad = False
 
+        if img_size % patch_size != 0:
+            raise ValueError(f"img_size ({img_size}) must be divisible by patch_size ({patch_size}).")
+        self.repr_dim = int((img_size // patch_size) ** 2 * embed_dim)
         self.device = device
 
-    def forward(self, current_observation, future_observation):
-        obs_representation = self.observation_encoder(current_observation)  # Shape: [B, N, D]
-        pred_future_representation = self.predictor(obs_representation, action=action)  # Shape: [B, N, D]
-        with torch.no_grad():
-            target_representation = self.target_encoder(future_observation)  # Shape: [B, N, D]
-        if pred_future_representation.shape[1] > target_representation.shape[1]:
-            pred_future_representation = pred_future_representation[:, :-1, :]
-        loss = nn.MSELoss()(pred_future_representation, target_representation)
+    def forward(self, states, actions):
+        if self.training:
+            B, T, C, H, W = states.shape  # B=batch size, T=timesteps, C=channels, H=height, W=width
+            flattened_states = states.reshape(B * T, C, H, W)
+            states_emb = self.observation_encoder(flattened_states)  # Shape: [B*T, N, D]
+            _, N, D = states_emb.shape
+            states_emb = states_emb.reshape(B, T, -1, D) # Reshape back to [B, T, N, D]
 
-        return loss
+            states_emb_hist = states_emb[:, :-1, :, :] # Historical embeddings [B, T-1, N, D]
+            states_emb_pred_tgt = states_emb[:, 1:, :, :] # Target embeddings [B, T-1, N, D]
+
+            states_emb_pred_tgt = states_emb_pred_tgt.reshape(B * (T-1), N, D) # [B*(T-1), N, D]
+            flattened_emb_hist = states_emb_hist.reshape(B * (T-1), N, D) # [B*(T-1), N, D]
+            flattened_actions = actions.reshape(B * (T-1), actions.shape[-1]) # [B*(T-1), A]
+            states_emb_pred = self.predictor(flattened_emb_hist, flattened_actions)  # Shape: [B*(T-1), N, D] / [B*(T-1), 2]
+
+            loss = nn.MSELoss()(states_emb_pred_tgt, states_emb_pred[:, :-1, :])
+
+            return loss
+        else:
+            B, T, C, H, W = states.shape # Expecting input [B, 1, C, H, W]
+            flattened_states = states.reshape(B * T , C, H, W)  # Flatten to [B, C, H, W]
+            states_emb = self.observation_encoder(flattened_states)  # Encode initial state [B, N, D] eg. [64, 169, 192]
+            states_emb = states_emb.reshape(B, 1, *states_emb.shape[1:])
+            predictions = [states_emb]
+            for t in range(actions.shape[1]):
+                action_t = actions[:, t, :]
+                next_state_emb = self.predictor(states_emb.squeeze(1), action_t)
+                next_state_emb = next_state_emb[:, :-1, :].unsqueeze(1)
+                predictions.append(next_state_emb)
+            pred_encs = torch.cat(predictions, dim=1)
+            B, T, N, D = pred_encs.shape
+            pred_encs = pred_encs.reshape(B, T, N * D)
+            return pred_encs
