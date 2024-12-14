@@ -69,6 +69,7 @@ def evaluate_model(device, model, probe_train_ds, probe_val_ds):
 
     for probe_attr, loss in avg_losses.items():
         print(f"{probe_attr} loss: {loss}")
+    return avg_losses
 
 
 # if __name__ == "__main__":
@@ -173,7 +174,6 @@ def main(cfg: OmegaConf):
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-            break
 
         avg_loss = total_loss / len(probe_train_ds)
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss}")
@@ -193,7 +193,11 @@ def main(cfg: OmegaConf):
         #     print(f"Validation Loss: {avg_val_loss}")
         #     wandb.log({"Validation Loss": avg_val_loss, "Epoch": epoch+1})
 
-        evaluate_model(device, model, probe_train_ds, probe_val_ds)
+        if epoch%10 == 0:
+            avg_losses = evaluate_model(device, model, probe_train_ds, probe_val_ds)
+            for probe_attr, loss in avg_losses.items():
+                print(f"{probe_attr} loss: {loss}")
+                wandb.log({f"Validation {probe_attr} Loss": loss})
 
     wandb.finish()
 
