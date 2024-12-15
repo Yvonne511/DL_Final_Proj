@@ -15,8 +15,8 @@ hydra:
     nodes: 1
     tasks_per_node: 1
     cpus_per_task: 1
-    mem_gb: 6
-    gres: "gpu:1"
+    mem_gb: 256
+    gres: "gpu:a100:1"
     # gres: "gpu:volta:4"
     # constraint: "volta32gb"
     timeout_min: 4320
@@ -31,7 +31,7 @@ action_dim: 4
 start_lr: 0.001
 ref_lr: 0.1
 warmup_epochs: 5
-num_epochs: 100
+num_epochs: 5
 weight_decay: 0.0001
 final_weight_decay: 0
 final_lr: 1e-5

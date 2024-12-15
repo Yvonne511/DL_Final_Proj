@@ -49,8 +49,8 @@ def load_data(device):
 def load_model(device):
     """Load or initialize the model."""
     # TODO: Replace MockModel with your trained model
-    model = MockModel()
-    # model = JEPA_Model(device=device)
+    # model = MockModel()
+    model = JEPA_Model(device=device)
     return model
 
 

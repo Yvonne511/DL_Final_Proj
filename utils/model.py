@@ -102,11 +102,62 @@ class JEPA_Model(nn.Module):
         self.device = device
 
         self.loss = nn.MSELoss()
+        self.repr_dim = int((img_size // patch_size) ** 2 * embed_dim)
 
-    def forward(self, s_t, o_t1, action):
-        s_t_pred = self.predictor(s_t, action)
-        s_t_target = self.target_encoder(o_t1)
+    # def forward(self, s_t, o_t1, action):
+    #     s_t_pred = self.predictor(s_t, action)
+    #     s_t_target = self.target_encoder(o_t1)
 
-        l = self.loss(s_t_pred, s_t_target)
+    #     l = self.loss(s_t_pred, s_t_target)
         
-        return s_t_pred, l
+    #     return s_t_pred, l
+
+    def compute_loss(self, obs, actions):
+        """
+        Args:
+            states: [B, T, Ch, H, W]
+            actions: [B, T-1, 2]
+
+        Output:
+            loss for training and validation
+        """
+        s_t = self.observation_encoder(obs[:, 0])
+        total_loss = 0.0
+
+        for t in range(obs.size(1) - 1):
+            action_t = actions[:, t]
+            s_t_pred = self.predictor(s_t, action_t)
+
+            o_t1 = obs[:, t+1]
+            s_t_target = self.target_encoder(o_t1)
+            loss = self.loss(s_t_pred, s_t_target)
+
+            total_loss += loss
+            s_t = s_t_pred.detach()
+
+        return total_loss
+
+
+    def forward(self, states, actions):
+        """
+        Args:
+            states: [B, 1, Ch, H, W]
+            actions: [B, T-1, 2]
+
+        Output:
+            predictions: [B, T, D]
+        """
+        s_t = self.observation_encoder(states[:, 0])
+        B, N, D = s_t.shape
+        predictions = [s_t.unsqueeze(1)]
+
+        for t in range(actions.size(1)):
+            action_t = actions[:, t]
+            s_t_pred = self.predictor(s_t, action_t)
+            predictions.append(s_t_pred.unsqueeze(1))
+            s_t = s_t_pred.detach()
+
+        predictions = torch.cat(predictions, dim=1)
+        B, T, N, D = predictions.shape
+        predictions = predictions.reshape(B, T, N*D)
+        return predictions

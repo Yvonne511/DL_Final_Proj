@@ -121,23 +121,14 @@ def train(model, probe_train_ds, optimizer, device):
         obs, location, actions = batch
         obs = obs.to(device)   # shape: (B, T, 2, H, W)
         actions = actions.to(device)  # shape: (B, T-1, 2)
-        
-        batch_loss = 0.0
-        s_t = model.observation_encoder(obs[:, 0])
 
-        for t in range(obs.size(1) - 1):
-            o_t1 = obs[:, t+1]
-            action_t = actions[:, t]
-
-            s_t_pred, loss = model(s_t, o_t1, action_t)
-            batch_loss += loss.item()
-            s_t = s_t_pred.detach()
+        loss = model.compute_loss(obs, actions)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        total_loss += batch_loss
+        total_loss += loss
         avg_loss = total_loss / len(probe_train_ds)
     return avg_loss
 
@@ -150,18 +141,9 @@ def evaluate(model, probe_val_ds, device):
             obs = obs.to(device)   # shape: (B, T, 2, H, W)
             actions = actions.to(device)  # shape: (B, T-1, 2)
             
-            batch_loss = 0.0
-            s_t = model.observation_encoder(obs[:, 0])
+            loss = model.compute_loss(obs, actions)
 
-            for t in range(obs.size(1) - 1):
-                o_t1 = obs[:, t+1]
-                action_t = actions[:, t]
-
-                s_t_pred, loss = model(s_t, o_t1, action_t)
-                batch_loss += loss.item()
-                s_t = s_t_pred.detach()
-
-        val_loss += batch_loss
+        val_loss += loss
         avg_val_loss = val_loss / len(probe_val_ds['normal'])
     return avg_val_loss
 

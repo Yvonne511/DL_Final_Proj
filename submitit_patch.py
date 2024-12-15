@@ -10,7 +10,8 @@ SIF = "/scratch/work/public/singularity/cuda12.2.2-cudnn8.9.4-devel-ubuntu22.04.
 ENV_SETUP = """
 source /ext3/env.sh
 conda activate dl_final
-export SSL_CERT_FILE=cacert.pem
+export SSL_CERT_FILE=/home/$USER/cacert.pem
+source ~/.bashrc
 """
 
 def _submitit_command_str(self) -> str:
