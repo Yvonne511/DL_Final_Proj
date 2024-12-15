@@ -160,10 +160,11 @@ def main(cfg: OmegaConf):
     with open_dict(cfg):
         cfg["saved_folder"] = os.getcwd()
         print(f"Saving everything in: {cfg['saved_folder']}")
-
+    run_name = cfg.saved_folder.split('/')[6:].join('/')
     wandb.init(
         project="dl-final ",
         config=OmegaConf.to_container(cfg),
+        name=run_name,
     )
     device = get_device()
     train_ds, probe_train_ds, probe_val_ds = load_data(device)
