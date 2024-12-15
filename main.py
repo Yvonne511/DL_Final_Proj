@@ -19,8 +19,7 @@ def get_device():
     return device
 
 
-def load_data(device):
-    data_path = "/vast/yw4142/datasets/DL24FA"
+def load_data(device, data_path):
     train_ds = create_wall_dataloader(
         data_path=f"{data_path}/train",
         probing=False,
@@ -28,7 +27,6 @@ def load_data(device):
         train=True,
     )
 
-    data_path = "/vast/yw4142/datasets/DL24FA"
     probe_train_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_normal/train",
         probing=True,
@@ -160,14 +158,15 @@ def main(cfg: OmegaConf):
     with open_dict(cfg):
         cfg["saved_folder"] = os.getcwd()
         print(f"Saving everything in: {cfg['saved_folder']}")
-    run_name = cfg.saved_folder.split('/')[6:].join('/')
+    run_name = '/'.join(cfg.saved_folder.split('/')[6:])
     wandb.init(
         project="dl-final ",
         config=OmegaConf.to_container(cfg),
         name=run_name,
     )
     device = get_device()
-    train_ds, probe_train_ds, probe_val_ds = load_data(device)
+    data_path = cfg.data_path
+    train_ds, probe_train_ds, probe_val_ds = load_data(device, data_path)
     print(f"Number of training batches: {len(train_ds)}")
     print(f"Number of probe training batches: {len(probe_train_ds)}")
     print(f"Number of probe validating batches: {len(probe_val_ds)}")
