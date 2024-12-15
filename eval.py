@@ -41,9 +41,42 @@ def load_data(device):
         train=False,
     )
 
-    probe_val_ds = {"normal": probe_val_normal_ds, "wall": probe_val_wall_ds}
+    probe_val_wall_other_ds = create_wall_dataloader(
+        data_path=f"{data_path}/probe_wall_other/val",
+        probing=True,
+        device=device,
+        train=False,
+    )
+
+    probe_val_ds = {
+        "normal": probe_val_normal_ds,
+        "wall": probe_val_wall_ds,
+        "wall_other": probe_val_wall_other_ds,
+    }
 
     return probe_train_ds, probe_val_ds
+
+
+def load_expert_data(device):
+    data_path = "/scratch/DL24FA"
+
+    probe_train_expert_ds = create_wall_dataloader(
+        data_path=f"{data_path}/probe_expert/train",
+        probing=True,
+        device=device,
+        train=True,
+    )
+
+    probe_val_expert_ds = {
+        "expert": create_wall_dataloader(
+            data_path=f"{data_path}/probe_expert/val",
+            probing=True,
+            device=device,
+            train=False,
+        )
+    }
+
+    return probe_train_expert_ds, probe_val_expert_ds
 
 
 def load_model(device, action_dim):
@@ -191,9 +224,15 @@ def main(cfg: OmegaConf):
     checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-14/22-42-51/checkpoint_12.pth"
     start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
 
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Total Trainable Parameters: {total_params:,}")
     
     model.eval()
-    avg_losses = evaluate_model(device, model, probe_train_ds, probe_val_ds)
+    evaluate_model(device, model, probe_train_ds, probe_val_ds)
+
+    probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device)
+    evaluate_model(device, model, probe_train_expert_ds, probe_val_expert_ds)
+
         # for probe_attr, loss in avg_losses.items():
         #     print(f"{probe_attr} loss: {loss}")
         #     wandb.log({f"Validation {probe_attr} Loss": loss})
