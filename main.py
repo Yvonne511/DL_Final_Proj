@@ -21,6 +21,14 @@ def get_device():
 
 def load_data(device):
     data_path = "/vast/yw4142/datasets/DL24FA"
+    train_ds = create_wall_dataloader(
+        data_path=f"{data_path}/train",
+        probing=False,
+        device=device,
+        train=True,
+    )
+
+    data_path = "/vast/yw4142/datasets/DL24FA"
     probe_train_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_normal/train",
         probing=True,
@@ -44,7 +52,7 @@ def load_data(device):
 
     probe_val_ds = {"normal": probe_val_normal_ds, "wall": probe_val_wall_ds}
 
-    return probe_train_ds, probe_val_ds
+    return train_ds, probe_train_ds, probe_val_ds
 
 
 def load_model(device, action_dim):
@@ -158,22 +166,27 @@ def main(cfg: OmegaConf):
         config=OmegaConf.to_container(cfg),
     )
     device = get_device()
-    probe_train_ds, probe_val_ds = load_data(device)
-    print(f"Number of training batches: {len(probe_train_ds)}")
-    print(f"Number of validating batches: {len(probe_val_ds)}")
+    train_ds, probe_train_ds, probe_val_ds = load_data(device)
+    print(f"Number of training batches: {len(train_ds)}")
+    print(f"Number of probe training batches: {len(probe_train_ds)}")
+    print(f"Number of probe validating batches: {len(probe_val_ds)}")
 
     model_config = cfg.model
     action_dim = model_config.action_dim
 
     training_config = cfg.training
     num_epochs = training_config.epochs
-    ipe = len(probe_train_ds)
+    ipe = len(train_ds)
     ema = training_config.ema
 
     momentum_scheduler = (ema[0] + i*(ema[1]-ema[0])/(ipe*num_epochs*training_config.ipe_scale)
                           for i in range(int(ipe*num_epochs*training_config.ipe_scale)+1))
                           
-    model = JEPA_Model(device=device, action_dim=action_dim, momentum_scheduler=momentum_scheduler)
+    model = JEPA_Model(device=device, 
+                        action_dim=action_dim, 
+                        momentum_scheduler=momentum_scheduler,
+                        pred_depth=6,
+                        num_heads=6)
 
     optimizer, scaler, scheduler, wd_scheduler = init_opt(
             model.observation_encoder,
@@ -203,7 +216,7 @@ def main(cfg: OmegaConf):
         total_f1_loss = 0.0
         total_var_loss = 0.0
         total_cov_loss = 0.0
-        for batch in tqdm(probe_train_ds, desc=f"Training Epoch {epoch+1}", leave=False):
+        for batch in tqdm(train_ds, desc=f"Training Epoch {epoch+1}", leave=False):
             # print(f"Batch states shape: {batch.states.shape}")  # [64, 17, 2, 65, 65]
             # print(f"Batch locations shape: {batch.locations.shape}") # [64, 17, 2]
             # print(f"Batch actions shape: {batch.actions.shape}") # [64, 16, 2]
@@ -224,10 +237,10 @@ def main(cfg: OmegaConf):
             total_var_loss += var_loss.item()
             total_cov_loss += cov_loss.item()
 
-        avg_loss = total_loss / len(probe_train_ds)
-        avg_f1_loss = total_f1_loss / len(probe_train_ds)
-        avg_var_loss = total_var_loss / len(probe_train_ds)
-        avg_cov_loss = total_cov_loss / len(probe_train_ds)
+        avg_loss = total_loss / len(train_ds)
+        avg_f1_loss = total_f1_loss / len(train_ds)
+        avg_var_loss = total_var_loss / len(train_ds)
+        avg_cov_loss = total_cov_loss / len(train_ds)
         print(f"Epoch [{epoch+1}/{num_epochs}] - Loss: {avg_loss:.4f}, F1 Loss: {avg_f1_loss:.4f}, "
           f"Var Loss: {avg_var_loss:.4f}, Cov Loss: {avg_cov_loss:.4f}")
         wandb.log({
@@ -252,8 +265,8 @@ def main(cfg: OmegaConf):
         #     print(f"Validation Loss: {avg_val_loss}")
         #     wandb.log({"Validation Loss": avg_val_loss, "Epoch": epoch+1})
 
-        if (epoch+1) % 4 == 0:
-            save_checkpoint(model, optimizer, epoch + 1, avg_loss)
+        
+        save_checkpoint(model, optimizer, epoch + 1, avg_loss)
 
         # if (epoch+1) % 10 == 0:
         #     avg_losses = evaluate_model(device, model, probe_train_ds, probe_val_ds)
