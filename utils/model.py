@@ -73,7 +73,6 @@ class JEPA_Model(nn.Module):
         pred_depth=3,
         pred_emb_dim=384,
         action_dim=2,
-        num_heads=6,
         momentum_scheduler=None,
     ):
         super(JEPA_Model, self).__init__()
@@ -82,7 +81,6 @@ class JEPA_Model(nn.Module):
             img_size=[img_size],
             patch_size=patch_size,
             in_chans=2,
-            num_heads=num_heads
         ).to(device)
 
         embed_dim = self.observation_encoder.embed_dim
@@ -99,7 +97,6 @@ class JEPA_Model(nn.Module):
             img_size=[img_size],
             patch_size=patch_size,
             in_chans=2,
-            num_heads=num_heads
         ).to(device)
 
         self.target_encoder.load_state_dict(self.observation_encoder.state_dict())

@@ -11,6 +11,8 @@ import os
 
 from tqdm import tqdm
 
+import random
+import numpy as np
 
 def get_device():
     """Check for GPU availability."""
@@ -152,6 +154,14 @@ def load_checkpoint(model, optimizer, save_path="checkpoint.pth"):
         print(f"No checkpoint found at {save_path}")
         return 0, None
 
+def seed(seed):
+    random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    print(f"Random seed set to: {seed}")
+
 @hydra.main(config_path=".", config_name="config")
 def main(cfg: OmegaConf):
 
@@ -164,6 +174,7 @@ def main(cfg: OmegaConf):
         config=OmegaConf.to_container(cfg),
         name=run_name,
     )
+    seed(cfg.training.seed if 'seed' in cfg.training else 42)
     device = get_device()
     data_path = cfg.data_path
     train_ds, probe_train_ds, probe_val_ds = load_data(device, data_path)
@@ -185,9 +196,7 @@ def main(cfg: OmegaConf):
     model = JEPA_Model(device=device, 
                         action_dim=action_dim, 
                         momentum_scheduler=momentum_scheduler,
-                        pred_depth=3,
-                        num_heads=6)
-
+                        pred_depth=3)
     optimizer, scaler, scheduler, wd_scheduler = init_opt(
             model.observation_encoder,
             model.predictor,
@@ -209,6 +218,8 @@ def main(cfg: OmegaConf):
 
     # checkpoint_path = "model_checkpoint.pth"
     # start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
+    if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
 
     for epoch in range(num_epochs):
         model.train()

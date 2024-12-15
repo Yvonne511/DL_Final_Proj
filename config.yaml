@@ -2,8 +2,8 @@ defaults:
   - _self_
   - override hydra/launcher: submitit_slurm
 
-ckpt_base_path: /home/yvonne/nyu_courses/dl/checkpoints
-data_path: /home/yvonne/nyu_courses/dl/DL24FA
+ckpt_base_path: /vast/yw4142/checkpoints/dl_final
+data_path: /vast/yw4142/datasets/DL24FA
 
 hydra:
   run:
@@ -40,6 +40,8 @@ training:
   ema:
     - 0.996
     - 1.0
+
+  seed: 42
 
 model:
   action_dim: 2
