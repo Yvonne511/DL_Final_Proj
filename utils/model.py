@@ -12,6 +12,7 @@ from utils import vision_transformer as vit
 from utils.schedulers import (
     WarmupCosineSchedule,
     CosineWDSchedule)
+import itertools
 
 def init_opt(
     encoder,
@@ -72,7 +73,8 @@ class JEPA_Model(nn.Module):
         img_size=65,
         pred_depth=6,
         pred_emb_dim=384,
-        action_dim=2
+        action_dim=2,
+        momentum_scheduler=None
     ):
         super(JEPA_Model, self).__init__()
 
@@ -103,14 +105,27 @@ class JEPA_Model(nn.Module):
 
         self.loss = nn.MSELoss()
         self.repr_dim = int((img_size // patch_size) ** 2 * embed_dim)
+        self.momentum_scheduler = momentum_scheduler or itertools.cycle([0.999])
 
-    # def forward(self, s_t, o_t1, action):
-    #     s_t_pred = self.predictor(s_t, action)
-    #     s_t_target = self.target_encoder(o_t1)
+        self.online_transform = T.Compose([
+            T.RandomCrop(64, padding=4),
+            T.RandomHorizontalFlip(),
+            T.ColorJitter(brightness=0.2, contrast=0.2),
+            T.RandomAffine(degrees=10, translate=(0.1, 0.1))
+        ])
 
-    #     l = self.loss(s_t_pred, s_t_target)
-        
-    #     return s_t_pred, l
+        self.target_transform = T.Compose([
+            T.RandomResizedCrop(64, scale=(0.8, 1.0)),
+            T.RandomVerticalFlip(),
+            T.ColorJitter(brightness=0.1, contrast=0.1),
+            T.RandomAffine(degrees=5, translate=(0.05, 0.05))
+        ])
+
+    def momentum_update(self):
+        with torch.no_grad():
+            m = next(self.momentum_scheduler)  # Get current momentum value
+            for param_q, param_k in zip(self.observation_encoder.parameters(), self.target_encoder.parameters()):
+                param_k.data.mul_(m).add_((1. - m) * param_q.data)
 
     def compute_loss(self, obs, actions):
         """
@@ -129,11 +144,17 @@ class JEPA_Model(nn.Module):
             s_t_pred = self.predictor(s_t, action_t)
 
             o_t1 = obs[:, t+1]
-            s_t_target = self.target_encoder(o_t1)
+            o_t1 = self.online_transform(o_t1)
+
+            with torch.no_grad():
+                s_t_target = self.target_encoder(o_t1).detach()
+                s_t_target = self.target_transform(s_t_target)
+            
             loss = self.loss(s_t_pred, s_t_target)
 
             total_loss += loss
             s_t = s_t_pred.detach()
+            self.momentum_update()
 
         return total_loss
 
