@@ -185,7 +185,7 @@ def main(cfg: OmegaConf):
     model = JEPA_Model(device=device, 
                         action_dim=action_dim, 
                         momentum_scheduler=momentum_scheduler,
-                        pred_depth=6,
+                        pred_depth=3,
                         num_heads=6)
 
     optimizer, scaler, scheduler, wd_scheduler = init_opt(
