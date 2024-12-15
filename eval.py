@@ -1,7 +1,6 @@
 from dataset import create_wall_dataloader
 from evaluator import ProbingEvaluator
 import torch
-import torch.nn as nn
 from models import MockModel
 import glob
 from utils.model import JEPA_Model, init_opt
@@ -153,10 +152,10 @@ def main(cfg: OmegaConf):
         cfg["saved_folder"] = os.getcwd()
         print(f"Saving everything in: {cfg['saved_folder']}")
 
-    wandb.init(
-        project="dl-final ",
-        config=OmegaConf.to_container(cfg),
-    )
+    # wandb.init(
+    #     project="dl-final ",
+    #     config=OmegaConf.to_container(cfg),
+    # )
     device = get_device()
     probe_train_ds, probe_val_ds = load_data(device)
     print(f"Number of training batches: {len(probe_train_ds)}")
@@ -174,7 +173,6 @@ def main(cfg: OmegaConf):
                           for i in range(int(ipe*num_epochs*training_config.ipe_scale)+1))
                           
     model = JEPA_Model(device=device, action_dim=action_dim, momentum_scheduler=momentum_scheduler)
-
     optimizer, scaler, scheduler, wd_scheduler = init_opt(
             model.observation_encoder,
             model.predictor,
@@ -189,79 +187,18 @@ def main(cfg: OmegaConf):
             use_bfloat16=training_config.use_bfloat16,
             ipe_scale=training_config.ipe_scale
         )
-    for layer in model.modules():
-        if isinstance(layer, nn.Linear):  # Adjust to target specific layers
-            nn.init.kaiming_uniform_(layer.weight, nonlinearity='relu')
-            nn.init.zeros_(layer.bias)
 
-    # checkpoint_path = "model_checkpoint.pth"
-    # start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
+    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-14/22-42-51/checkpoint_12.pth"
+    start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
 
-    for epoch in range(num_epochs):
-        model.train()
-        total_loss = 0.0
-        total_f1_loss = 0.0
-        total_var_loss = 0.0
-        total_cov_loss = 0.0
-        for batch in tqdm(probe_train_ds, desc=f"Training Epoch {epoch+1}", leave=False):
-            # print(f"Batch states shape: {batch.states.shape}")  # [64, 17, 2, 65, 65]
-            # print(f"Batch locations shape: {batch.locations.shape}") # [64, 17, 2]
-            # print(f"Batch actions shape: {batch.actions.shape}") # [64, 16, 2]
-            # save_continuous_frames_with_metadata(batch)
-            obs = batch.states # [64, 17, 2, 65, 65]
-            acts = batch.actions # [64, 17, 2]
-            optimizer.zero_grad()
-            loss, f1_loss, var_loss, cov_loss = model(obs, acts)
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
+    
+    model.eval()
+    avg_losses = evaluate_model(device, model, probe_train_ds, probe_val_ds)
+        # for probe_attr, loss in avg_losses.items():
+        #     print(f"{probe_attr} loss: {loss}")
+        #     wandb.log({f"Validation {probe_attr} Loss": loss})
 
-            scheduler.step()
-            wd_scheduler.step()
-
-            total_loss += loss.item()
-            total_f1_loss += f1_loss.item()
-            total_var_loss += var_loss.item()
-            total_cov_loss += cov_loss.item()
-
-        avg_loss = total_loss / len(probe_train_ds)
-        avg_f1_loss = total_f1_loss / len(probe_train_ds)
-        avg_var_loss = total_var_loss / len(probe_train_ds)
-        avg_cov_loss = total_cov_loss / len(probe_train_ds)
-        print(f"Epoch [{epoch+1}/{num_epochs}] - Loss: {avg_loss:.4f}, F1 Loss: {avg_f1_loss:.4f}, "
-          f"Var Loss: {avg_var_loss:.4f}, Cov Loss: {avg_cov_loss:.4f}")
-        wandb.log({
-            "Train Loss": avg_loss,
-            "F1 Loss": avg_f1_loss,
-            "Var Loss": avg_var_loss,
-            "Cov Loss": avg_cov_loss,
-            "Epoch": epoch+1
-        })
-
-        # Evaluation on validation set
-        # model.eval()
-        # with torch.no_grad():
-        #     val_loss = 0.0
-        #     for batch in probe_val_ds['normal']:
-        #         obs = batch.states
-        #         acts = batch.actions
-        #         loss = model(obs, acts)
-        #         val_loss += loss.item()
-
-        #     avg_val_loss = val_loss / len(probe_val_ds['normal'])
-        #     print(f"Validation Loss: {avg_val_loss}")
-        #     wandb.log({"Validation Loss": avg_val_loss, "Epoch": epoch+1})
-
-        if (epoch+1) % 4 == 0:
-            save_checkpoint(model, optimizer, epoch + 1, avg_loss)
-
-        # if (epoch+1) % 10 == 0:
-        #     avg_losses = evaluate_model(device, model, probe_train_ds, probe_val_ds)
-        #     for probe_attr, loss in avg_losses.items():
-        #         print(f"{probe_attr} loss: {loss}")
-        #         wandb.log({f"Validation {probe_attr} Loss": loss})
-
-    wandb.finish()
+    # wandb.finish()
 
 if __name__ == "__main__":
     main()

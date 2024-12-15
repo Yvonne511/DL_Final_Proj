@@ -15,8 +15,8 @@ hydra:
     nodes: 1
     tasks_per_node: 1
     cpus_per_task: 1
-    mem_gb: 6
-    gres: "gpu:1"
+    mem_gb: 256
+    gres: "gpu:h100:1"
     # gres: "gpu:volta:4"
     # constraint: "volta32gb"
     timeout_min: 4320
@@ -26,3 +26,19 @@ hydra:
 
 training:
   epochs: 100
+  warmup_epochs: 5
+  start_lr: 0.0002                   # Starting learning rate during warmup
+  ref_lr: 0.001                      # Reference learning rate after warmup
+  final_lr: 1.0e-06                  # Final learning rate at the end of training
+
+  weight_decay: 0.04                 # Initial weight decay
+  final_weight_decay: 0.4            # Final weight decay
+
+  use_bfloat16: true                 # Use bfloat16 for mixed precision training
+  ipe_scale: 1.0                     # Scaling factor for iterations per epoch
+  ema:
+    - 0.996
+    - 1.0
+
+model:
+  action_dim: 2
