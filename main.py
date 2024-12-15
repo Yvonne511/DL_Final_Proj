@@ -64,9 +64,7 @@ def load_data(device, data_path):
     return train_ds, probe_train_ds, probe_val_ds
 
 
-def load_expert_data(device):
-    data_path = "/scratch/DL24FA"
-
+def load_expert_data(device, data_path):
     probe_train_expert_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_expert/train",
         probing=True,
@@ -224,9 +222,7 @@ def main(cfg: OmegaConf):
                           
     model = JEPA_Model(device=device, 
                         action_dim=action_dim, 
-                        momentum_scheduler=momentum_scheduler,
-                        pred_depth=3,
-                        num_heads=6)
+                        momentum_scheduler=momentum_scheduler)
 
     optimizer, scaler, scheduler, wd_scheduler = init_opt(
             model.observation_encoder,

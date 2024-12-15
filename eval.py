@@ -18,8 +18,7 @@ def get_device():
     return device
 
 
-def load_data(device):
-    data_path = "/vast/yw4142/datasets/DL24FA"
+def load_data(device, data_path):
     probe_train_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_normal/train",
         probing=True,
@@ -57,9 +56,7 @@ def load_data(device):
     return probe_train_ds, probe_val_ds
 
 
-def load_expert_data(device):
-    data_path = "/scratch/DL24FA"
-
+def load_expert_data(device, data_path):
     probe_train_expert_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_expert/train",
         probing=True,
@@ -190,7 +187,8 @@ def main(cfg: OmegaConf):
     #     config=OmegaConf.to_container(cfg),
     # )
     device = get_device()
-    probe_train_ds, probe_val_ds = load_data(device)
+    data_path = cfg.data_path
+    probe_train_ds, probe_val_ds = load_data(device, data_path)
     print(f"Number of training batches: {len(probe_train_ds)}")
     print(f"Number of validating batches: {len(probe_val_ds)}")
 
@@ -221,16 +219,16 @@ def main(cfg: OmegaConf):
             ipe_scale=training_config.ipe_scale
         )
 
-    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-14/22-42-51/checkpoint_12.pth"
+    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-15/00-27-17/0/checkpoint_40.pth"
     start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total Trainable Parameters: {total_params:,}")
     
     model.eval()
-    evaluate_model(device, model, probe_train_ds, probe_val_ds)
+    # evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
-    probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device)
+    probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device, data_path)
     evaluate_model(device, model, probe_train_expert_ds, probe_val_expert_ds)
 
         # for probe_attr, loss in avg_losses.items():
