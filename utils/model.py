@@ -70,9 +70,10 @@ class JEPA_Model(nn.Module):
         model_name='vit_tiny',
         patch_size=5,
         img_size=65,
-        pred_depth=6,
+        pred_depth=3,
         pred_emb_dim=384,
         action_dim=2,
+        num_heads=6,
         momentum_scheduler=None,
     ):
         super(JEPA_Model, self).__init__()
@@ -80,7 +81,8 @@ class JEPA_Model(nn.Module):
         self.observation_encoder = vit.__dict__[model_name](
             img_size=[img_size],
             patch_size=patch_size,
-            in_chans=2
+            in_chans=2,
+            num_heads=num_heads
         ).to(device)
 
         embed_dim = self.observation_encoder.embed_dim
@@ -96,7 +98,8 @@ class JEPA_Model(nn.Module):
         self.target_encoder = vit.__dict__[model_name](
             img_size=[img_size],
             patch_size=patch_size,
-            in_chans=2
+            in_chans=2,
+            num_heads=num_heads
         ).to(device)
 
         self.target_encoder.load_state_dict(self.observation_encoder.state_dict())
@@ -162,7 +165,7 @@ class JEPA_Model(nn.Module):
 
             var_loss = var_loss_pred + var_loss_tgt
             cov_loss = cov_loss_pred + cov_loss_tgt
-            lambda_f1 = 10
+            lambda_f1 = 1000
             lambda_var = 1
             lambda_cov = 10
             loss = lambda_f1 * f1_loss + lambda_var * var_loss + lambda_cov * cov_loss
