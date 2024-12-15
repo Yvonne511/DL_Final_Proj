@@ -20,23 +20,26 @@ class MockModel(torch.nn.Module):
     Does nothing. Just for testing.
     """
 
-    def __init__(self, device="cuda", bs=64, n_steps=17, output_dim=256):
+    def __init__(self, device="cuda", output_dim=256):
         super().__init__()
         self.device = device
-        self.bs = bs
-        self.n_steps = n_steps
-        self.repr_dim = 256
+        self.repr_dim = output_dim
 
     def forward(self, states, actions):
         """
         Args:
-            states: [B, 1, Ch, H, W]
+            During training:
+                states: [B, T, Ch, H, W]
+            During inference:
+                states: [B, 1, Ch, H, W]
             actions: [B, T-1, 2]
 
         Output:
             predictions: [B, T, D]
         """
-        return torch.randn((self.bs, self.n_steps, self.repr_dim)).to(self.device)
+        B, T, _ = actions.shape
+
+        return torch.randn((B, T + 1, self.repr_dim)).to(self.device)
 
 
 class Prober(torch.nn.Module):
