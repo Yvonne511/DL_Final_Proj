@@ -188,7 +188,7 @@ def main(cfg: OmegaConf):
             ipe_scale=training_config.ipe_scale
         )
 
-    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-14/21-55-35/checkpoint_12.pth"
+    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-14/22-42-51/checkpoint_12.pth"
     start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
 
     
