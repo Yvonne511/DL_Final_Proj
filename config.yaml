@@ -16,11 +16,11 @@ hydra:
     nodes: 1
     tasks_per_node: 1
     cpus_per_task: 1
-    mem_gb: 256
-    gres: "gpu:h100:1"
+    mem_gb: 128
+    gres: "gpu:a100:1"
     # gres: "gpu:volta:4"
     # constraint: "volta32gb"
-    timeout_min: 4320
+    timeout_min: 1440
     setup: ["export DEBUGVAR=$(scontrol show hostnames $SLURM_JOB_NODELIST)",
             export MASTER_ADDR="$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)",
             "export MASTER_PORT=$(for port in $(shuf -i 30000-65500 -n 20); do if [[ $(netstat -tupln 2>&1 | grep $port | wc -l) -eq 0 ]] ; then echo $port; break; fi; done;)",]
@@ -28,12 +28,12 @@ hydra:
 training:
   epochs: 100
   warmup_epochs: 5
-  start_lr: 0.0002                   # Starting learning rate during warmup
-  ref_lr: 0.001                      # Reference learning rate after warmup
+  start_lr: 0.0005                   # Starting learning rate during warmup
+  ref_lr: 0.002                      # Reference learning rate after warmup
   final_lr: 1.0e-06                  # Final learning rate at the end of training
 
-  weight_decay: 0.04                 # Initial weight decay
-  final_weight_decay: 0.4            # Final weight decay
+  weight_decay: 0.02                 # Initial weight decay
+  final_weight_decay: 0.1            # Final weight decay
 
   use_bfloat16: true                 # Use bfloat16 for mixed precision training
   ipe_scale: 1.0                     # Scaling factor for iterations per epoch
@@ -44,4 +44,7 @@ training:
   seed: 42
 
 model:
-  action_dim: 2
+  action_dim: 2 
+  lambda: 25
+  mu: 25
+  nu: 1
