@@ -1,3 +1,6 @@
 outputs/
 __pycache__/
-outputs/checkpoint.pth
+*.pth
+model_weights.pth
+model_weights/
+checkpoints/

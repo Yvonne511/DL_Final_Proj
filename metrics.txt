@@ -1,6 +1,6 @@
-probe_normal val loss: 66.35611724853516
-probe_wall val loss: 40.56895446777344
-probe_wall_other val loss: 38.49451446533203
+probe_normal loss: 38.461021423339844
+probe_wall loss: 29.52347183227539
+probe_wall_other loss: 31.495149612426758
 probe_expert val loss: 211.3445281982422
 
 # number of trainable parameters of your model: 8,018,880
@@ -11,4 +11,5 @@ conda activate dl_final
 python pipeline.py
 
 #make sure to change your data path in config.yaml to the path of your dataset, 
-#we are using a single GPU with 80GB VRAM as well as 256GB RAM
+#we are using a single GPU with 80GB VRAM as well as 256GB RAM to train
+

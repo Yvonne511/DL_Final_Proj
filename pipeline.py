@@ -157,7 +157,7 @@ def save_checkpoint(model, optimizer, epoch, loss):
         "epoch": epoch,
         "loss": loss,
     }
-    save_path = f"checkpoint_{epoch}.pth"
+    save_path = f"model_weights.pth"
     torch.save(checkpoint, save_path)
     print(f"Checkpoint saved at {save_path}")
 
