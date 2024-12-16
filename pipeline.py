@@ -28,7 +28,7 @@ def load_data(device, data_path):
         data_path=f"{data_path}/train",
         probing=False,
         device=device,
-        batch_size=64,
+        batch_size=32,
         train=True,
     )
 
@@ -194,11 +194,11 @@ def main(cfg: OmegaConf):
         cfg["saved_folder"] = os.getcwd()
         print(f"Saving everything in: {cfg['saved_folder']}")
     run_name = '/'.join(cfg.saved_folder.split('/')[6:])
-    wandb.init(
+    """wandb.init(
         project="dl-final ",
         config=OmegaConf.to_container(cfg),
         name=run_name,
-    )
+    )"""
     seed_everything(42)
     device = get_device()
     data_path = cfg.data_path
@@ -278,13 +278,13 @@ def main(cfg: OmegaConf):
         avg_cov_loss = total_cov_loss / data_size
         print(f"Epoch [{epoch+1}/{num_epochs}] - Loss: {avg_loss:.4f}, F1 Loss: {avg_f1_loss:.4f}, "
           f"Var Loss: {avg_var_loss:.4f}, Cov Loss: {avg_cov_loss:.4f}")
-        wandb.log({
+        """wandb.log({
             "Train Loss": avg_loss,
             "F1 Loss": avg_f1_loss,
             "Var Loss": avg_var_loss,
             "Cov Loss": avg_cov_loss,
             "Epoch": epoch+1
-        })
+        })"""
 
         # Evaluation on validation set
         # model.eval()
@@ -309,7 +309,7 @@ def main(cfg: OmegaConf):
         #         print(f"{probe_attr} loss: {loss}")
         #         wandb.log({f"Validation {probe_attr} Loss": loss})
 
-    wandb.finish()
+    """wandb.finish()"""
 
 if __name__ == "__main__":
     main()
