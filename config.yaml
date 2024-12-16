@@ -2,8 +2,8 @@ defaults:
   - _self_
   - override hydra/launcher: submitit_slurm
 
-ckpt_base_path: /home/yvonne/nyu_courses/dl/checkpoints
-data_path: /home/yvonne/nyu_courses/dl/DL24FA
+ckpt_base_path: /scratch/th3129/checkpoints
+data_path: /scratch/th3129/shared/DL24FA
 
 hydra:
   run:
@@ -17,12 +17,12 @@ hydra:
     tasks_per_node: 1
     cpus_per_task: 1
     mem_gb: 256
-    gres: "gpu:h100:1"
+    gres: "gpu:a100:1"
     # gres: "gpu:volta:4"
     # constraint: "volta32gb"
     timeout_min: 4320
     setup: ["export DEBUGVAR=$(scontrol show hostnames $SLURM_JOB_NODELIST)",
-            export MASTER_ADDR="$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)",
+            "export MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)",
             "export MASTER_PORT=$(for port in $(shuf -i 30000-65500 -n 20); do if [[ $(netstat -tupln 2>&1 | grep $port | wc -l) -eq 0 ]] ; then echo $port; break; fi; done;)",]
 
 training:

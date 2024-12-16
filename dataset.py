@@ -44,7 +44,7 @@ def create_wall_dataloader(
     data_path,
     probing=False,
     device="cuda",
-    batch_size=64,
+    batch_size=16,
     train=True,
 ):
     ds = WallDataset(
