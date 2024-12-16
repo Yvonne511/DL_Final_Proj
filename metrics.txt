@@ -1,7 +1,7 @@
 probe_normal loss: 38.461021423339844
 probe_wall loss: 29.52347183227539
 probe_wall_other loss: 31.495149612426758
-probe_expert val loss: 211.3445281982422
+probe_expert val loss: 209.39739990234375
 
 # number of trainable parameters of your model: 8,018,880
 
