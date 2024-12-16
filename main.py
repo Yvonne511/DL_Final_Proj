@@ -5,7 +5,7 @@ import torch.nn as nn
 from models import MockModel
 import glob
 from model import JEPA_Model, init_opt
-
+from omegaconf import OmegaConf
 import matplotlib.pyplot as plt
 import os
 
@@ -105,14 +105,15 @@ def evaluate_model(device, model, probe_train_ds, probe_val_ds):
 
 
 if __name__ == "__main__":
+    cfg = OmegaConf.load('config.yaml')
     device = get_device()
-    model = load_model(device, save_path='model_weights.pth ')
+    model = load_model(device, save_path='model_weights.pth')
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total Trainable Parameters: {total_params:,}")
 
-    probe_train_ds, probe_val_ds = load_data(device, data_path='/scratch/th3129/shared/DL24FA')
+    probe_train_ds, probe_val_ds = load_data(device, cfg.data_path)
     evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
-    probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device, data_path='/scratch/th3129/shared/DL24FA')
+    probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device, cfg.data_path)
     evaluate_model(device, model, probe_train_expert_ds, probe_val_expert_ds)
