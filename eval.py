@@ -219,14 +219,15 @@ def main(cfg: OmegaConf):
             ipe_scale=training_config.ipe_scale
         )
 
-    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-15/00-27-17/0/checkpoint_40.pth"
+    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-15/00-27-17/0/checkpoint_69.pth"
+    # checkpoint_path = "/scratch/th3129/checkpoints/outputs/2024-12-15/18-09-05/checkpoint_7.pth"
     start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total Trainable Parameters: {total_params:,}")
     
     model.eval()
-    # evaluate_model(device, model, probe_train_ds, probe_val_ds)
+    evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
     probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device, data_path)
     evaluate_model(device, model, probe_train_expert_ds, probe_val_expert_ds)

@@ -161,8 +161,8 @@ class JEPA_Model(nn.Module):
 
             var_loss = var_loss_pred + var_loss_tgt
             cov_loss = cov_loss_pred + cov_loss_tgt
-            lambda_f1 = 1000
-            lambda_var = 1
+            lambda_f1 = 1
+            lambda_var = 10
             lambda_cov = 10
             loss = lambda_f1 * f1_loss + lambda_var * var_loss + lambda_cov * cov_loss
 

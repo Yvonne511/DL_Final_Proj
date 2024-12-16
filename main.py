@@ -190,6 +190,19 @@ def load_checkpoint(model, optimizer, save_path="checkpoint.pth"):
         print(f"No checkpoint found at {save_path}")
         return 0, None
 
+def seed_everything(seed: int):
+    import random, os
+    import numpy as np
+    import torch
+    
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 @hydra.main(config_path=".", config_name="config")
 def main(cfg: OmegaConf):
 
@@ -202,6 +215,7 @@ def main(cfg: OmegaConf):
         config=OmegaConf.to_container(cfg),
         name=run_name,
     )
+    seed_everything(42)
     device = get_device()
     data_path = cfg.data_path
     train_ds, probe_train_ds, probe_val_ds = load_data(device, data_path)
@@ -245,18 +259,20 @@ def main(cfg: OmegaConf):
 
     # checkpoint_path = "model_checkpoint.pth"
     # start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
-
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0.0
         total_f1_loss = 0.0
         total_var_loss = 0.0
         total_cov_loss = 0.0
+        i = 0
         for batch in tqdm(train_ds, desc=f"Training Epoch {epoch+1}", leave=False):
             # print(f"Batch states shape: {batch.states.shape}")  # [64, 17, 2, 65, 65]
             # print(f"Batch locations shape: {batch.locations.shape}") # [64, 17, 2]
             # print(f"Batch actions shape: {batch.actions.shape}") # [64, 16, 2]
             # save_continuous_frames_with_metadata(batch)
+            if i > 100:
+                break
             obs = batch.states # [64, 17, 2, 65, 65]
             acts = batch.actions # [64, 17, 2]
             optimizer.zero_grad()
@@ -272,11 +288,12 @@ def main(cfg: OmegaConf):
             total_f1_loss += f1_loss.item()
             total_var_loss += var_loss.item()
             total_cov_loss += cov_loss.item()
+            i += 1
 
-        avg_loss = total_loss / len(train_ds)
-        avg_f1_loss = total_f1_loss / len(train_ds)
-        avg_var_loss = total_var_loss / len(train_ds)
-        avg_cov_loss = total_cov_loss / len(train_ds)
+        avg_loss = total_loss / 100
+        avg_f1_loss = total_f1_loss / 100
+        avg_var_loss = total_var_loss / 100
+        avg_cov_loss = total_cov_loss / 100
         print(f"Epoch [{epoch+1}/{num_epochs}] - Loss: {avg_loss:.4f}, F1 Loss: {avg_f1_loss:.4f}, "
           f"Var Loss: {avg_var_loss:.4f}, Cov Loss: {avg_cov_loss:.4f}")
         wandb.log({
