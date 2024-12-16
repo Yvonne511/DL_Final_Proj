@@ -5,3 +5,5 @@ probe_expert val loss: 211.3445281982422
 # number of trainable parameters of your model: 8,018,880
 # training command to replicate your submitted model
 python pipeline.py
+#make sure to change your data path in config.yaml to the path of your dataset, 
+#and we are using a single GPU with 80GB VRAM as well as 256GB RAM

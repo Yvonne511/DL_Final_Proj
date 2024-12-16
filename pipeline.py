@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from models import MockModel
 import glob
-from utils.model import JEPA_Model, init_opt
+from model import JEPA_Model, init_opt
 
 import matplotlib.pyplot as plt
 import os

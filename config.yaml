@@ -2,8 +2,8 @@ defaults:
   - _self_
   - override hydra/launcher: submitit_slurm
 
-ckpt_base_path: /scratch/th3129/checkpoints
-data_path: /scratch/th3129/shared/DL24FA
+ckpt_base_path: ./
+data_path: /scratch/qt2094/DL24FA
 
 hydra:
   run:

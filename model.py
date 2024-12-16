@@ -8,8 +8,8 @@
 import torch
 import torch.nn as nn
 
-from utils import vision_transformer as vit
-from utils.schedulers import (
+import vision_transformer as vit
+from schedulers import (
     WarmupCosineSchedule,
     CosineWDSchedule)
 
