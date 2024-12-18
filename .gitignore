@@ -1,2 +1,7 @@
 outputs/
 __pycache__/
+runs/
+wandb/
+*.out
+slurm-*.out
+*.sbatch

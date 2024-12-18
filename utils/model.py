@@ -67,36 +67,53 @@ class JEPA_Model(nn.Module):
     def __init__(
         self,
         device,
-        model_name='vit_tiny',
+        model_name='vit_custom',
+        predictor_model_name='vit_custom_predictor', 
         patch_size=5,
         img_size=65,
-        pred_depth=6,
-        pred_emb_dim=384,
+        pred_depth=4,
+        pred_num_heads=6,
         action_dim=2,
         momentum_scheduler=None,
+        embed_dim=128,
+        encoder_depth=8,
+        encoder_num_heads=6,
+        mlp_ratio=6,
+
     ):
+        
+        
         super(JEPA_Model, self).__init__()
 
         self.observation_encoder = vit.__dict__[model_name](
             img_size=[img_size],
+            embed_dim=embed_dim,
+            depth=encoder_depth,
+            num_heads=encoder_num_heads,
             patch_size=patch_size,
-            in_chans=2
+            in_chans=2,
+            mlp_ratio=mlp_ratio
         ).to(device)
 
         embed_dim = self.observation_encoder.embed_dim
         num_heads = self.observation_encoder.num_heads
         
-        self.predictor = vit.__dict__["vit_predictor"](
+        self.predictor = vit.__dict__[predictor_model_name](
             embed_dim=embed_dim,
-            num_heads=num_heads,
+            num_heads=pred_num_heads,
             depth=pred_depth,
-            action_dim = action_dim
+            action_dim = action_dim,
+            mlp_ratio=mlp_ratio
         ).to(device)
 
         self.target_encoder = vit.__dict__[model_name](
             img_size=[img_size],
             patch_size=patch_size,
-            in_chans=2
+            in_chans=2,
+            embed_dim=embed_dim,
+            depth=encoder_depth,
+            num_heads=encoder_num_heads,
+            mlp_ratio=mlp_ratio
         ).to(device)
 
         self.target_encoder.load_state_dict(self.observation_encoder.state_dict())

@@ -19,8 +19,26 @@ def get_device():
 
 
 def load_data(device):
-    data_path = "/vast/yw4142/datasets/DL24FA"
-    probe_train_ds = create_wall_dataloader(
+    data_path = "/scratch/qt2094/DL24FA"
+    probe_train_expert_ds = create_wall_dataloader(
+        data_path=f"{data_path}/probe_expert/train",
+        probing=True,
+        device=device,
+        train=True,
+    )
+    probe_val_expert_ds = create_wall_dataloader(
+        data_path=f"{data_path}/probe_expert/val",
+        probing=True,
+        device=device,
+        train=False,
+    )
+    probe_val_wall_other_ds = create_wall_dataloader(
+        data_path=f"{data_path}/probe_wall_other/val",
+        probing=True,
+        device=device,
+        train=False,
+    )
+    probe_train_normal_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_normal/train",
         probing=True,
         device=device,
@@ -33,7 +51,6 @@ def load_data(device):
         device=device,
         train=False,
     )
-
     probe_val_wall_ds = create_wall_dataloader(
         data_path=f"{data_path}/probe_wall/val",
         probing=True,
@@ -43,7 +60,7 @@ def load_data(device):
 
     probe_val_ds = {"normal": probe_val_normal_ds, "wall": probe_val_wall_ds}
 
-    return probe_train_ds, probe_val_ds
+    return probe_train_expert_ds, probe_val_expert_ds, probe_val_wall_other_ds, probe_train_normal_ds, probe_val_normal_ds, probe_val_wall_ds
 
 
 def load_model(device, action_dim):
@@ -157,16 +174,16 @@ def main(cfg: OmegaConf):
     #     config=OmegaConf.to_container(cfg),
     # )
     device = get_device()
-    probe_train_ds, probe_val_ds = load_data(device)
-    print(f"Number of training batches: {len(probe_train_ds)}")
-    print(f"Number of validating batches: {len(probe_val_ds)}")
+    probe_train_expert_ds, probe_val_expert_ds, probe_val_wall_other_ds, probe_train_normal_ds, probe_val_normal_ds, probe_val_wall_ds = load_data(device)
+    print(f"Number of training batches: {len(probe_train_normal_ds)}")
+    print(f"Number of validating batches: {len(probe_val_normal_ds)}")
 
     model_config = cfg.model
     action_dim = model_config.action_dim
 
     training_config = cfg.training
     num_epochs = training_config.epochs
-    ipe = len(probe_train_ds)
+    ipe = len(probe_train_normal_ds)
     ema = training_config.ema
 
     momentum_scheduler = (ema[0] + i*(ema[1]-ema[0])/(ipe*num_epochs*training_config.ipe_scale)
@@ -188,12 +205,13 @@ def main(cfg: OmegaConf):
             ipe_scale=training_config.ipe_scale
         )
 
-    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-14/22-42-51/checkpoint_12.pth"
+    checkpoint_path = cfg.checkpoint_path
     start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
 
-    
     model.eval()
-    avg_losses = evaluate_model(device, model, probe_train_ds, probe_val_ds)
+    avg_loss1 = evaluate_model(device, model, probe_train_expert_ds, probe_val_expert_ds)
+    #avg_loss2 = evaluate_model(device, model, probe_train_normal_ds, probe_val_normal_ds)
+    #avg_loss3 = evaluate_model(device, model, probe_train_normal_ds, probe_val_wall_ds)
         # for probe_attr, loss in avg_losses.items():
         #     print(f"{probe_attr} loss: {loss}")
         #     wandb.log({f"Validation {probe_attr} Loss": loss})

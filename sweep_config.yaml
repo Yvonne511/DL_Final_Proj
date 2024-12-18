@@ -1,0 +1,60 @@
+program: sweep_main.py
+method: bayes
+metric:
+  name: Batch eval Loss
+  goal: minimize
+parameters:
+  # Flattened model parameters
+  model_embed_dim:
+    values: [96, 128, 192]
+  model_depth:
+    values: [6, 8, 12]
+  model_num_heads:
+    values: [3, 6, 8]  # 96/3=32, 128/4=32, 192/6=32 - all divide evenly
+  model_patch_size:
+    values: [5, 13]
+  model_mlp_ratio:
+    values: [4, 6]
+  model_pred_depth:
+    values: [3, 4, 6]
+  model_pred_num_heads:
+    values: [3, 6, 8]  # Match with model_num_heads to ensure compatibility
+
+  # Flattened training parameters
+  training_batch_size:
+    values: [32, 64, 128]
+  training_start_lr:
+    distribution: log_uniform
+    min: -7  # 1e-7
+    max: -4  # 1e-4
+  training_ref_lr:
+    distribution: log_uniform
+    min: -5  # 1e-5
+    max: -2  # 1e-2
+  training_final_lr:
+    distribution: log_uniform
+    min: -8  # 1e-8
+    max: -5  # 1e-5
+  training_weight_decay:
+    distribution: log_uniform
+    min: -4.39794  # log10(0.00004)
+    max: -1.39794  # log10(0.04)
+  training_warmup_epochs:
+    values: [5, 10]
+  training_ema:
+    values: [[0.996, 1.0], [0.998, 1.0]]
+  training_use_bfloat16:
+    values: [true, false]
+  training_ipe_scale:
+    values: [1.0, 2.0, 4.0]
+  # Hyperband parameters
+  bracket:
+    values: [0, 1, 2, 3, 4]
+  rung:
+    values: [0, 1, 2, 3, 4]
+
+early_terminate:
+  type: hyperband
+  min_iter: 1
+  max_iter: 81
+  eta: 3

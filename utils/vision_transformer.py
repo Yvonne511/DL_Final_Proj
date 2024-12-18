@@ -458,6 +458,30 @@ def vit_giant(patch_size=16, **kwargs):
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
+def vit_custom(patch_size=16, embed_dim=192, depth=12, num_heads=3, mlp_ratio=4, **kwargs):
+    model = VisionTransformer(
+        patch_size=patch_size, 
+        embed_dim=embed_dim,  
+        depth=depth,          
+        num_heads=num_heads,  
+        mlp_ratio=mlp_ratio, 
+        qkv_bias=True, 
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+        **kwargs
+    )
+    return model
+
+def vit_custom_predictor(embed_dim=192, depth=3, num_heads=4, mlp_ratio=4, action_dim=2, **kwargs):
+    model = VisionTransformerPredictor(
+        embed_dim=embed_dim, 
+        depth=depth, 
+        num_heads=num_heads, 
+        mlp_ratio=mlp_ratio,
+        qkv_bias=True, 
+        action_dim=action_dim,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+        **kwargs)
+    return model
 
 VIT_EMBED_DIMS = {
     'vit_tiny': 192,

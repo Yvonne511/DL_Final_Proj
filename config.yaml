@@ -2,7 +2,7 @@ defaults:
   - _self_
   - override hydra/launcher: submitit_slurm
 
-ckpt_base_path: /vast/yw4142/checkpoints/dl_final
+ckpt_base_path: /scratch/qt2094/HW/DL_work/DL_Final_Proj/runs
 
 hydra:
   run:
@@ -25,6 +25,8 @@ hydra:
             "export MASTER_PORT=$(for port in $(shuf -i 30000-65500 -n 20); do if [[ $(netstat -tupln 2>&1 | grep $port | wc -l) -eq 0 ]] ; then echo $port; break; fi; done;)",]
 
 training:
+  seed: 42
+  batch_size: 64
   epochs: 100
   warmup_epochs: 5
   start_lr: 0.0002                   # Starting learning rate during warmup
@@ -39,6 +41,24 @@ training:
   ema:
     - 0.996
     - 1.0
+  # Early stopping parameters
+  early_stopping_patience: 10  # no improvement for 10 * 50 epochs then stop
+  min_delta: 0.0001  # minimum improvement
+  eval_interval: 10  # evaluate every 50 epochs
+  saved_folder: "checkpoints"
 
 model:
   action_dim: 2
+
+sweep:
+  name: "sweep"
+  metric: "loss"
+  objective: "minimize"
+  parameters:
+    lr:
+      distribution: "log_uniform"
+      min: 1e-4
+      max: 1e-2
+
+data_path: "/scratch/qt2094/DL24FA"
+checkpoint_path: "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-15/00-27-17/0/checkpoint_55.pth"
