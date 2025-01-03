@@ -9,6 +9,11 @@ import matplotlib.pyplot as plt
 import os
 
 from tqdm import tqdm
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import matplotlib.cm as cm
+import numpy as np
+from scipy.stats import zscore
 
 
 def get_device():
@@ -100,6 +105,52 @@ def evaluate_model(device, model, probe_train_ds, probe_val_ds):
     for probe_attr, loss in avg_losses.items():
         print(f"{probe_attr} loss: {loss}")
     return avg_losses
+
+def visualize_embeddings(dataset, model):
+    embeddings = []
+
+    for batch in tqdm(dataset, desc="Embeddings Visualization"):
+        init_states = batch.states[:, 0:1]  # BS, 1, C, H, W
+        pred_encs = model(states=init_states, actions=batch.actions).detach().cpu().numpy() # BS, T, D
+        embeddings.append(pred_encs)
+        break
+    
+    embeddings = np.concatenate(embeddings, axis=0)[:10]
+    N, T, D = embeddings.shape
+    print(N, T, D)
+    embeddings = embeddings.reshape(-1, D)
+
+    scaler = StandardScaler()
+    embeddings_scaled = scaler.fit_transform(embeddings)
+
+    pca = PCA(n_components=2)
+    embeddings_pca = pca.fit_transform(embeddings_scaled)
+    embeddings_pca = embeddings_pca.reshape(N, T, -1)
+
+    plt.figure(figsize=(8, 6))
+    cmap = cm.get_cmap('tab10', N)
+
+    for i, sequence in enumerate(embeddings_pca):
+        color = cmap(i)
+        plt.scatter(sequence[:, 0], sequence[:, 1], color=color, label=f'Sequence {i+1}', alpha=0.6, edgecolor='k')
+        plt.plot(sequence[:, 0], sequence[:, 1], linestyle='dotted', color=color, alpha=0.8)  # Connect with dotted lines
+
+    # z_scores = np.abs(zscore(sequence, axis=0))
+    # filtered_points = sequence[(z_scores[:, 0] < 2) & (z_scores[:, 1] < 2)]  # Keep points within 2 standard deviations
+    # x_min, x_max = filtered_points[:, 0].min(), filtered_points[:, 0].max()
+    # y_min, y_max = filtered_points[:, 1].min(), filtered_points[:, 1].max()
+    # x_padding = (x_max - x_min) * 0.1
+    # y_padding = (y_max - y_min) * 0.1
+
+    # plt.xlim(x_min - x_padding, x_max + x_padding)
+    # plt.ylim(y_min - y_padding, y_max + y_padding)
+
+    # plt.scatter(embeddings_pca[:, 0], embeddings_pca[:, 1], alpha=0.6, edgecolor='k')
+    plt.title('PCA of Embeddings')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.grid(True)
+    plt.savefig('/scratch/th3129/DL_Final_Proj/embeddings.png')
 
 
 # if __name__ == "__main__":
@@ -218,19 +269,22 @@ def main(cfg: OmegaConf):
             use_bfloat16=training_config.use_bfloat16,
             ipe_scale=training_config.ipe_scale
         )
-
-    # checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-15/00-27-17/0/checkpoint_69.pth"
-    checkpoint_path = "/scratch/th3129/checkpoints/outputs/2024-12-15/18-09-05/checkpoint_7.pth"
+    # checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-17/23-59-45/0/checkpoint_100.pth"
+    # checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-17/22-59-49/0/checkpoint_100.pth"
+    # checkpoint_path = "/scratch/th3129/checkpoints/outputs/2024-12-15/18-09-05/checkpoint_7.pth"
+    checkpoint_path = "/vast/yw4142/checkpoints/dl_final/outputs/2024-12-15/00-27-17/0/checkpoint_100.pth"
     start_epoch, _ = load_checkpoint(model, optimizer, checkpoint_path)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Total Trainable Parameters: {total_params:,}")
     
     model.eval()
+    print("visualize_embeddings")
+    visualize_embeddings(probe_train_ds, model)
     # evaluate_model(device, model, probe_train_ds, probe_val_ds)
 
-    probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device, data_path)
-    evaluate_model(device, model, probe_train_expert_ds, probe_val_expert_ds)
+    # probe_train_expert_ds, probe_val_expert_ds = load_expert_data(device, data_path)
+    # evaluate_model(device, model, probe_train_expert_ds, probe_val_expert_ds)
 
         # for probe_attr, loss in avg_losses.items():
         #     print(f"{probe_attr} loss: {loss}")
